@@ -29,7 +29,8 @@ import com.sparrow.mvc.adapter.HandlerAdapter;
 import com.sparrow.mvc.adapter.impl.MethodControllerHandlerAdapter;
 import com.sparrow.mvc.mapping.HandlerMapping;
 import com.sparrow.mvc.mapping.impl.UrlMethodHandlerMapping;
-import com.sparrow.protocol.AuthorizingSupport;
+import com.sparrow.protocol.Authenticator;
+import com.sparrow.protocol.Authorizer;
 import com.sparrow.protocol.BusinessException;
 import com.sparrow.protocol.LoginToken;
 import com.sparrow.protocol.Result;
@@ -250,6 +251,7 @@ public class DispatcherFilter implements Filter {
         request.setAttribute(Constant.REQUEST_ACTION_CURRENT_FORUM, forumCode);
         request.setAttribute("divNavigation.current", forumCode);
 
+
         String rootPath = ConfigUtility.getValue(Config.ROOT_PATH);
         if (!StringUtility.isNullOrEmpty(rootPath)) {
             request.setAttribute(Config.ROOT_PATH, rootPath);
@@ -365,22 +367,23 @@ public class DispatcherFilter implements Filter {
         }
 
         //未授权F
-        if (LoginType.NO_AUTHENTICATE.equals(handlerExecutionChain.getLoginType())) {
+        if (!handlerExecutionChain.isNeedAuthorizing()) {
             return true;
         }
 
         String actionName = handlerExecutionChain.getActionName();
-        AuthorizingSupport authorizingSupport = this.container.getBean(SysObjectName.AUTHORIZING_SERVICE);
+        Authenticator authenticator = this.container.getBean(SysObjectName.AUTHENTICATOR_SERVICE);
         String permission = this.cookieUtility.getPermission(httpRequest);
         String deviceId = this.sparrowServletUtility.getServletUtility().getDeviceId(httpRequest);
-        LoginToken user = authorizingSupport.authenticate(permission, deviceId);
+        LoginToken user = authenticator.authenticate(permission, deviceId);
         httpRequest.setAttribute(User.ID, user.getUserId());
         httpRequest.setAttribute(User.LOGIN_TOKEN, user);
 
         if (user.getUserId().equals(User.VISITOR_ID)) {
             String rootPath = ConfigUtility.getValue(Config.ROOT_PATH);
             if (LoginType.MESSAGE.equals(handlerExecutionChain.getLoginType())) {
-                Result result = new Result(SparrowError.USER_NOT_LOGIN.getCode(), SparrowError.USER_NOT_LOGIN.getMessage());
+                Result result = Result.fail(SparrowError.USER_NOT_LOGIN);
+                httpResponse.setHeader("Content-Type", Constant.CONTENT_TYPE_JSON);
                 httpResponse.getWriter().write(JsonFactory.getProvider().toString(result));
                 return false;
             }
@@ -426,6 +429,7 @@ public class DispatcherFilter implements Filter {
                 }
             } else {
                 LoginDialog loginDialog = new LoginDialog(false, false, loginUrl, isInFrame);
+                httpResponse.setHeader("Content-Type", Constant.CONTENT_TYPE_JSON);
                 httpResponse.getWriter().write(JsonFactory.getProvider().toString(loginDialog));
             }
             logger.info("login false{}", actionName);
@@ -437,12 +441,10 @@ public class DispatcherFilter implements Filter {
         if (!handlerExecutionChain.isNeedAuthorizing()) {
             return true;
         }
+        Authorizer authorizer = this.container.getBean(SysObjectName.AUTHORIZER_SERVICE);
 
-        String code = httpRequest.getParameter("resource-code");
-
-        if (!authorizingSupport.isAuthorized(
-            user, actionName,
-            code)) {
+        if (!authorizer.isPermitted(
+            user, actionName)) {
             httpResponse.getWriter().write(Constant.ACCESS_DENIED);
             this.sparrowServletUtility.moveAttribute(httpRequest);
             return false;

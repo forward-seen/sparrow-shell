@@ -21,20 +21,26 @@ import com.sparrow.constant.User;
 import com.sparrow.exception.CacheNotFoundException;
 import com.sparrow.mvc.RequestParameters;
 import com.sparrow.mvc.ViewWithModel;
-import com.sparrow.protocol.AuthorizingSupport;
+import com.sparrow.protocol.Authenticator;
 import com.sparrow.protocol.BusinessException;
 import com.sparrow.protocol.LoginToken;
+import com.sparrow.protocol.pager.PagerResult;
 import com.sparrow.servlet.ServletContainer;
+import com.sparrow.support.web.ServletUtility;
 import com.sparrow.vo.HelloVO;
+import com.sparrow.vo.JsonVO;
+import java.util.ArrayList;
+import java.util.List;
+import javax.servlet.http.HttpServletRequest;
 
 public class HelloController {
 
-    private AuthorizingSupport authorizingSupport;
+    private Authenticator authenticatorService;
 
     private ServletContainer servletContainer;
 
-    public void setAuthorizingSupport(AuthorizingSupport authorizingSupport) {
-        this.authorizingSupport = authorizingSupport;
+    public void setAuthenticatorService(Authenticator authenticatorService) {
+        this.authenticatorService = authenticatorService;
     }
 
     public void setServletContainer(ServletContainer servletContainer) {
@@ -66,22 +72,38 @@ public class HelloController {
         return new HelloVO("够意思吧，json不用页面");
     }
 
+    public PagerResult<HelloVO, JsonVO> pager() {
+        PagerResult<HelloVO, JsonVO> pagerResult = new PagerResult<>();
+        pagerResult.setAddition(new JsonVO("json"));
+        pagerResult.setRecordCount(1000L);
+        pagerResult.setPageSize(100);
+        pagerResult.setCurrentPageIndex(1);
+        List<HelloVO> hellos = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            hellos.add(new HelloVO(i + ""));
+        }
+        pagerResult.setList(hellos);
+        return pagerResult;
+    }
+
     public ViewWithModel welcome() {
         return ViewWithModel.forward(new HelloVO("jsp page content from server ..."));
     }
 
-    public ViewWithModel login() throws BusinessException, CacheNotFoundException {
+    public ViewWithModel login(HttpServletRequest request) throws BusinessException, CacheNotFoundException {
+        ServletUtility servletUtility = ServletUtility.getInstance();
+
         LoginToken loginToken = new LoginToken();
         loginToken.setNickName("nick-zhangsan");
         loginToken.setAvatar("http://localhost");
-        loginToken.setDeviceId("0");
+        loginToken.setDeviceId(servletUtility.getDeviceId(request));
         loginToken.setCent(100L);
         loginToken.setExpireAt(System.currentTimeMillis() + 1000 * 60 * 60);
         loginToken.setDays(20);
         loginToken.setUserId(1L);
         loginToken.setUserName("zhangsan");
         loginToken.setActivate(true);
-        String sign = authorizingSupport.sign(loginToken, "111111");
+        String sign = authenticatorService.sign(loginToken, "111111");
         servletContainer.rootCookie(User.PERMISSION, sign, 6);
         return ViewWithModel.redirect("welcome", loginToken);
     }

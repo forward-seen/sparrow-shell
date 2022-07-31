@@ -1,15 +1,15 @@
 package com.sparrow.facade.authorizing;
 
-import com.sparrow.authorizing.AuthorizingDemo;
+import com.sparrow.authorizing.AuthenticatorDemo;
 import com.sparrow.core.spi.ApplicationContext;
-import com.sparrow.protocol.AuthorizingSupport;
+import com.sparrow.protocol.Authenticator;
 import com.sparrow.protocol.LoginToken;
 
 public class Test {
 
     public static void main(String[] args) {
         ApplicationContext.getContainer().init();
-        AuthorizingSupport authorizingSupport = new AuthorizingDemo();
+        Authenticator authorizingSupport = new AuthenticatorDemo();
         LoginToken loginToken = new LoginToken();
         loginToken.setNickName("nick-zhangsan");
         loginToken.setAvatar("http://localhost");
@@ -25,7 +25,7 @@ public class Test {
         System.out.printf(sign);
 
 
-        sign="aWQ9MSZuYW1lPXpoYW5nc2FuJmxvZ2luPW5pY2stemhhbmdzYW4mZXhwaXJlQXQ9MTY1NjMyMzYyMjAxOSZjZW50PTEwMCZhdmF0YXI9aHR0cDovL2xvY2FsaG9zdCZkZXZpY2VJZD0wJmFjdGl2YXRlPXRydWUmZGF5cz0yMA==.Q+EOCIcH0A7ah/Zbn4QPbu8ZBvk=";
+        sign="aWQ9MSZuYW1lPXpoYW5nc2FuJmxvZ2luPW5pY2stemhhbmdzYW4mZXhwaXJlQXQ9MTY1Njk1MjI2ODE0MiZjZW50PTEwMCZhdmF0YXI9aHR0cDovL2xvY2FsaG9zdCZkZXZpY2VJZD0xMjMuMTE3LjE4Mi4yMTImYWN0aXZhdGU9dHJ1ZSZkYXlzPTIw.tkbXwsprLMBI0S2S06%2BjMQBljJ4%3D";
         loginToken = authorizingSupport.authenticate(sign, "218.247.142.217");
         System.out.printf(loginToken.getUserName());
     }

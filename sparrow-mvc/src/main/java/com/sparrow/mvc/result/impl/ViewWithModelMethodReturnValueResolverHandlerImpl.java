@@ -22,7 +22,7 @@ import com.sparrow.constant.SparrowError;
 import com.sparrow.core.Pair;
 import com.sparrow.mvc.ServletInvokableHandlerMethod;
 import com.sparrow.mvc.result.MethodReturnValueResolverHandler;
-import com.sparrow.mvc.result.ResultErrorAssembler;
+import com.sparrow.mvc.result.ResultAssembler;
 import com.sparrow.protocol.BusinessException;
 import com.sparrow.protocol.Result;
 import com.sparrow.protocol.VO;
@@ -38,6 +38,7 @@ import com.sparrow.utility.ConfigUtility;
 import com.sparrow.utility.StringUtility;
 
 import java.io.IOException;
+import java.util.Enumeration;
 import java.util.Map;
 
 import javax.servlet.FilterChain;
@@ -59,51 +60,19 @@ public class ViewWithModelMethodReturnValueResolverHandlerImpl implements Method
     }
 
     private void flash(HttpServletRequest request, String flashUrl, String key, Object o) {
+
         Map<String, Object> values = HttpContext.getContext().getHolder();
         if (o != null) {
             values.put(key, o);
         }
+        Enumeration<String> parameterNames = request.getParameterNames();
+        while (parameterNames.hasMoreElements()) {
+            String parameterKey = parameterNames.nextElement();
+            values.put(parameterKey, request.getParameter(parameterKey));
+        }
         Pair<String, Map<String, Object>> sessionMap = Pair.create(flashUrl, values);
         request.getSession().setAttribute(Constant.FLASH_KEY, sessionMap);
         HttpContext.getContext().remove();
-    }
-
-    /**
-     * 根据返回结果判断url
-     *
-     * @param actionResult      direct:login
-     *                          <p>
-     *                          direct:login.jsp
-     *                          <p>
-     *                          direct:success
-     *                          <p>
-     *                          login
-     *                          <p>
-     *                          login.jsp success
-     * @param referer           当前refer
-     * @param defaultSuccessUrl 默认成功页
-     */
-    private ViewWithModel parse(String actionResult, String referer, String defaultSuccessUrl) {
-        String url;
-        PageSwitchMode pageSwitchMode = PageSwitchMode.REDIRECT;
-        //手动返回url
-        if (actionResult.contains(Symbol.COLON)) {
-            Pair<String, String> switchModeAndUrl = Pair.split(actionResult, Symbol.COLON);
-            pageSwitchMode = PageSwitchMode.valueOf(switchModeAndUrl.getFirst().toUpperCase());
-            url = switchModeAndUrl.getSecond();
-        } else {
-            url = actionResult;
-        }
-        url = assembleUrl(referer, defaultSuccessUrl, url, pageSwitchMode, null);
-        switch (pageSwitchMode) {
-            case REDIRECT:
-                return ViewWithModel.redirect(url);
-            case TRANSIT:
-                return ViewWithModel.transit(url);
-            case FORWARD:
-            default:
-                return ViewWithModel.forward(url);
-        }
     }
 
     private String assembleUrl(String referer, String defaultSuccessUrl, String url, PageSwitchMode pageSwitchMode,
@@ -149,10 +118,7 @@ public class ViewWithModelMethodReturnValueResolverHandlerImpl implements Method
         ViewWithModel viewWithModel = null;
 
         String url = null;
-        if (returnValue instanceof String) {
-            viewWithModel = this.parse((String) returnValue, servletUtility.referer(request), handlerExecutionChain.getSuccessUrl());
-            url = viewWithModel.getUrl();
-        } else if (returnValue instanceof ViewWithModel) {
+        if (returnValue instanceof ViewWithModel) {
             viewWithModel = (ViewWithModel) returnValue;
             url = this.assembleUrl(referer, handlerExecutionChain.getSuccessUrl(), viewWithModel.getUrl(), viewWithModel.getSwitchMode(), viewWithModel.getUrlArgs());
         }
@@ -194,7 +160,6 @@ public class ViewWithModelMethodReturnValueResolverHandlerImpl implements Method
                 if (transitUrl != null && !transitUrl.startsWith(Constant.HTTP_PROTOCOL)) {
                     transitUrl = rootPath + transitUrl;
                 }
-
                 if (!url.startsWith(Constant.HTTP_PROTOCOL)) {
                     url = rootPath + url;
                 }
@@ -218,7 +183,7 @@ public class ViewWithModelMethodReturnValueResolverHandlerImpl implements Method
     @Override
     public void errorResolve(Throwable exception,
         HttpServletRequest request,
-        HttpServletResponse response) throws IOException, ServletException {
+        HttpServletResponse response) throws IOException {
 
         PageSwitchMode errorPageSwitch = PageSwitchMode.REDIRECT;
         String exceptionSwitchMode = ConfigUtility.getValue(Config.EXCEPTION_SWITCH_MODE);
@@ -230,21 +195,20 @@ public class ViewWithModelMethodReturnValueResolverHandlerImpl implements Method
         if (exception instanceof BusinessException) {
             businessException = (BusinessException) exception;
         } else {
-            businessException = new BusinessException(SparrowError.SYSTEM_SERVER_ERROR);
+            businessException = new BusinessException(SparrowError.SYSTEM_SERVER_ERROR, Constant.ERROR);
         }
-        Result result = ResultErrorAssembler.assemble(businessException, null);
-        String flashUrl;
-        switch (errorPageSwitch) {
-            case FORWARD:
-            case REDIRECT:
-                String url = ConfigUtility.getValue(Config.ERROR_URL);
-                if (StringUtility.isNullOrEmpty(url)) {
-                    url = "/500";
-                }
-                flashUrl = servletUtility.assembleActualUrl(url);
-                this.flash(request, flashUrl, Constant.FLASH_EXCEPTION_RESULT, result);
-                response.sendRedirect(url);
-                break;
+        Result result = ResultAssembler.assemble(businessException, null);
+        String url = ConfigUtility.getValue(Config.ERROR_URL);
+        if (StringUtility.isNullOrEmpty(url)) {
+            url = "/500";
         }
+
+        String referer = this.servletUtility.referer(request);
+        String flashUrl = this.servletUtility.assembleActualUrl(referer);
+        this.flash(request, flashUrl, Constant.FLASH_EXCEPTION_RESULT, result);
+        if (errorPageSwitch.equals(PageSwitchMode.TRANSIT)) {
+            url = url + "?" + referer;
+        }
+        response.sendRedirect(url);
     }
 }

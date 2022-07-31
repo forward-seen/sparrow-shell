@@ -23,17 +23,18 @@ import com.sparrow.core.cache.StrongDurationCache;
 import com.sparrow.core.spi.ApplicationContext;
 import com.sparrow.support.EnvironmentSupport;
 import com.sparrow.utility.CollectionsUtility;
+import com.sparrow.utility.JDBCUtils;
 import com.sparrow.utility.StringUtility;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.sql.DataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * getDatasourceConfig 初始化ContextLoaderListener.java 中配置 database identify
@@ -110,33 +111,33 @@ public class DataSourceFactoryImpl implements DataSourceFactory {
                 props.load(EnvironmentSupport.getInstance().getFileInputStream(filePath));
                 datasourceConfig.setDriverClassName(props.getProperty(schema + ".driverClassName"));
                 datasourceConfig.setUsername(props.getProperty(schema + ".username"));
-                datasourceConfig.setPassword(props.getProperty(schema + ".password"));
+                String envPasswordKey = "mysql_" + schema + "_password";
+                datasourceConfig.setPassword(System.getenv(envPasswordKey));
+                if (StringUtility.isNullOrEmpty(datasourceConfig.getPassword())) {
+                    datasourceConfig.setPassword(props.getProperty(schema + ".password"));
+                }
                 datasourceConfig.setUrl(props.getProperty(schema + ".url"));
                 datasourceConfig.setPoolSize(Integer.parseInt(props.getProperty(schema + ".poolSize")));
             } catch (Exception ignore) {
                 throw new RuntimeException(ignore);
             }
             //detection jdbc config useful
-            Connection connection = new ProxyConnection(datasourceConfig, null);
+            Connection connection = null;
             Statement statement = null;
             try {
+                Class.forName(datasourceConfig.getDriverClassName());
+                connection = DriverManager.getConnection(datasourceConfig.getUrl(), datasourceConfig.getUsername(), datasourceConfig.getPassword());
                 statement = connection.createStatement();
                 boolean effectCount = statement.execute("SELECT 1");
                 if (effectCount) {
                     datasourceUrlMap.put(connection.getMetaData().getURL(), dsKey);
                 }
                 datasourceConfigMap.put(dataSourceKey, datasourceConfig);
-            } catch (SQLException e) {
+            } catch (Exception e) {
                 logger.error(" cat't connection", e);
             } finally {
-                try {
-                    if (statement != null) {
-                        statement.close();
-                    }
-                    connection.close();
-                } catch (SQLException e) {
-                    logger.error("test connection close error", e);
-                }
+                JDBCUtils.close(statement);
+                JDBCUtils.close(connection);
             }
             return datasourceConfig;
         }
