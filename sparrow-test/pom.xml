@@ -96,6 +96,20 @@
             <groupId>com.sparrow</groupId>
             <artifactId>sparrow-protocol</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>com.sparrow</groupId>
+            <artifactId>sparrow-protocol-dao</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.sparrow</groupId>
+            <artifactId>sparrow-protocol-mq</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.sparrow</groupId>
+            <artifactId>sparrow-protocol-redis</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>com.sparrow</groupId>
             <artifactId>sparrow-container</artifactId>
@@ -133,7 +147,7 @@
         <!--</dependency>-->
         <dependency>
             <groupId>com.sparrow</groupId>
-            <artifactId>sparrow-sharded-jedis</artifactId>
+            <artifactId>sparrow-jedis</artifactId>
         </dependency>
         <!--sparrow end-->
 
@@ -360,8 +374,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven.compile.version}</version>
                 <configuration>
-                    <source>${maven.compile.source}</source>
-                    <target>${maven.compile.target}</target>
+                    <source>8</source>
+                    <target>8</target>
                     <encoding>${maven.compile.encoding}</encoding>
                     <debug>true</debug>
                 </configuration>

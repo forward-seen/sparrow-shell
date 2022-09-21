@@ -6,9 +6,10 @@
         <artifactId>sparrow-bom</artifactId>
         <groupId>com.sparrow</groupId>
         <version>1.0</version>
+        <relativePath/>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <version>${sparrow_aop_version}</version>
+    <version>1.0.0-SNAPSHOT</version>
     <artifactId>sparrow-aop</artifactId>
     <properties>
         <curator.version>2.10.0</curator.version>
@@ -59,6 +60,10 @@ aspectjrt：支持aop相关注解等-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
+                <configuration>
+                    <configLocation>../style/sparrow_checkstyle.xml</configLocation>
+                    <suppressionsLocation>../style/check_style_suppressions.xml</suppressionsLocation>
+                </configuration>
             </plugin>
         </plugins>
     </build>

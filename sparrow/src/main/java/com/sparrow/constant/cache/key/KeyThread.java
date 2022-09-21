@@ -17,26 +17,26 @@
 
 package com.sparrow.constant.cache.key;
 
+import com.sparrow.cache.Key;
 import com.sparrow.constant.SparrowModule;
-import com.sparrow.constant.cache.KEY;
 
 public class KeyThread {
     /**
      * 上一次显示时间
      */
-    public static final KEY.Business SHOWTIME = new KEY.Business(SparrowModule.BLOG, "THREAD", "SHOWTIME");
+    public static final Key.Business SHOWTIME = new Key.Business(SparrowModule.BLOG, "THREAD", "SHOWTIME");
 
     /**
      * 显示的时间间隔
      */
-    public static final KEY.Business SPLIT = new KEY.Business(SparrowModule.BLOG, "THREAD", "SPLIT");
+    public static final Key.Business SPLIT = new Key.Business(SparrowModule.BLOG, "THREAD", "SPLIT");
 
     /**
      * 帖了的队列 <p> Order Set <p> id time
      */
-    public static final KEY.Business QUEUE = new KEY.Business(SparrowModule.BLOG, "THREAD", "QUEUE", "SHOWTIME");
+    public static final Key.Business QUEUE = new Key.Business(SparrowModule.BLOG, "THREAD", "QUEUE", "SHOWTIME");
     /**
      * 帖子队列实体内容 <p> hash <p> id content
      */
-    public static final KEY.Business QUEUE_ENTITY = new KEY.Business(SparrowModule.BLOG, "THREAD", "QUEUE", "ENTITY");
+    public static final Key.Business QUEUE_ENTITY = new Key.Business(SparrowModule.BLOG, "THREAD", "QUEUE", "ENTITY");
 }

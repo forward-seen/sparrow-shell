@@ -19,12 +19,11 @@ package com.sparrow.redis;
 
 import com.sparrow.cache.CacheClient;
 import com.sparrow.cache.CacheDataNotFound;
-import com.sparrow.constant.cache.KEY;
+import com.sparrow.cache.Key;
+import com.sparrow.cache.exception.CacheConnectionException;
 import com.sparrow.container.Container;
-import com.sparrow.container.impl.SparrowContainer;
-import com.sparrow.exception.CacheConnectionException;
+import com.sparrow.core.spi.ApplicationContext;
 import com.sparrow.protocol.ModuleSupport;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -35,7 +34,7 @@ import java.util.Set;
  */
 public class RedisSetTest {
     public static void main(String[] args) throws CacheConnectionException {
-        Container container = new SparrowContainer();
+        Container container = ApplicationContext.getContainer();
         //定义模块，一个业务会存在多个模块
         ModuleSupport OD = new ModuleSupport() {
             @Override
@@ -49,18 +48,15 @@ public class RedisSetTest {
             }
         };
 
-
         //相同模块下会存在多个业务
-        KEY.Business od = new KEY.Business(OD, "POOL");
-        KEY key = new KEY.Builder().business(od).businessId("BJS", "CHI", "HU").build();
-
-        container.setConfigLocation("/redis_config.xml");
+        Key.Business od = new Key.Business(OD, "POOL");
+        Key key = new Key.Builder().business(od).businessId("BJS", "CHI", "HU").build();
+        container.setContextConfigLocation("/sparrow_application_context.xml");
         container.init();
         CacheClient client = container.getBean("cacheClient");
         client.key().delete(key);
         client.set().add(key, 1);
         client.set().add(key, "1", "2", "3", "4", "end");
-
         System.out.println(client.set().getSize(key));
 
         List<Object> list = new ArrayList<Object>();
@@ -73,7 +69,7 @@ public class RedisSetTest {
         client.key().delete(key);
         Set<String> fromdb = client.set().list(key, new CacheDataNotFound<Set<String>>() {
             @Override
-            public Set<String> read(KEY key) {
+            public Set<String> read(Key key) {
                 Set<String> set = new HashSet<String>();
                 set.add("from db");
                 return set;
@@ -85,12 +81,12 @@ public class RedisSetTest {
         }
 
         client.key().delete(key);
-        Set<RedisEntity> set=new HashSet<RedisEntity>();
-        set.add(new RedisEntity(1,"1"));
-        client.set().add(key,set);
-        set=client.set().list(key,RedisEntity.class);
-        for(RedisEntity re:set){
-            System.out.println(re.getId()+"-"+re.getName());
+        Set<RedisEntity> set = new HashSet<RedisEntity>();
+        set.add(new RedisEntity(1, "1"));
+        client.set().add(key, set);
+        set = client.set().list(key, RedisEntity.class);
+        for (RedisEntity re : set) {
+            System.out.println(re.getId() + "-" + re.getName());
         }
     }
 }

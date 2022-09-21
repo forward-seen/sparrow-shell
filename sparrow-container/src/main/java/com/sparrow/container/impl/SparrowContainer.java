@@ -16,85 +16,102 @@
  */
 package com.sparrow.container.impl;
 
+import com.sparrow.cache.exception.CacheNotFoundException;
 import com.sparrow.constant.Config;
 import com.sparrow.constant.SysObjectName;
 import com.sparrow.container.AbstractContainer;
+import com.sparrow.container.AnnotationBeanDefinitionParserDelegate;
 import com.sparrow.container.AnnotationBeanDefinitionReader;
 import com.sparrow.container.BeanDefinition;
 import com.sparrow.container.BeanDefinitionParserDelegate;
 import com.sparrow.container.BeanDefinitionReader;
 import com.sparrow.container.ContainerAware;
+import com.sparrow.container.ContainerBuilder;
 import com.sparrow.container.SimpleBeanDefinitionRegistry;
 import com.sparrow.container.XmlBeanDefinitionReader;
-import com.sparrow.exception.CacheNotFoundException;
-import com.sparrow.protocol.LoginToken;
-import com.sparrow.protocol.Result;
+import com.sparrow.protocol.POJO;
 import com.sparrow.protocol.constant.Constant;
 import com.sparrow.protocol.constant.magic.Symbol;
-import com.sparrow.protocol.dto.AuthorDTO;
-import com.sparrow.protocol.dto.ImageDTO;
-import com.sparrow.protocol.dto.SimpleItemDTO;
-import com.sparrow.protocol.pager.PagerQuery;
 import com.sparrow.servlet.HandlerInterceptor;
 import com.sparrow.support.Initializer;
-import com.sparrow.support.LoginDialog;
 import com.sparrow.utility.ConfigUtility;
 import com.sparrow.utility.StringUtility;
-
 import java.util.Iterator;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SparrowContainer extends AbstractContainer {
     private static Logger logger = LoggerFactory.getLogger(SparrowContainer.class);
 
+    private void initProxyBeans() {
+        if (!this.builder.isInitProxyBean()) {
+            return;
+        }
+        Iterator<String> iterator = this.beanDefinitionRegistry.keyIterator();
+        while (iterator.hasNext()) {
+            String beanName = iterator.next();
+            try {
+                BeanDefinition bd = beanDefinitionRegistry.getObject(beanName);
+                if (!bd.isSingleton()) {
+                    //this.initMethod(bd);
+                    Class clazz = Class.forName(bd.getBeanClassName());
+                    if (POJO.class.isAssignableFrom(clazz)) {
+                        this.initProxyBean(clazz);
+                    }
+                }
+            } catch (Exception e) {
+            }
+        }
+    }
+
+    private void initEarlySingleton() {
+        if (!builder.isInitSingletonBean()) {
+            return;
+        }
+        Iterator<String> iterator = this.beanDefinitionRegistry.keyIterator();
+
+        while (iterator.hasNext()) {
+            String beanName = iterator.next();
+            try {
+                BeanDefinition bd = beanDefinitionRegistry.getObject(beanName);
+                if (bd.isSingleton() && !bd.isController()) {
+                    Object o = this.earlyInstance(bd);
+                    this.earlySingletonRegistry.pubObject(beanName, o);
+                    if (bd.alias() != null) {
+                        this.earlySingletonRegistry.pubObject(bd.alias(), o);
+                    }
+                }
+            } catch (Exception e) {
+            }
+        }
+    }
+
     @Override
-    public void init() {
+    public void init(ContainerBuilder builder) {
+        this.builder = builder;
         logger.info("----------------- container init ....-------------------");
         try {
             logger.info("-------------system config file init ...-------------------");
             initSystemConfig();
             logger.info("-------------init bean ...---------------------------");
+
             SimpleBeanDefinitionRegistry registry = new SimpleBeanDefinitionRegistry();
             BeanDefinitionParserDelegate delegate = new BeanDefinitionParserDelegate();
-            AnnotationBeanDefinitionReader annotationBeanDefinitionReader = new AnnotationBeanDefinitionReader(registry);
+
+            AnnotationBeanDefinitionParserDelegate annotationDelegate = new AnnotationBeanDefinitionParserDelegate();
+            AnnotationBeanDefinitionReader annotationBeanDefinitionReader = new AnnotationBeanDefinitionReader(registry, annotationDelegate);
             BeanDefinitionReader definitionReader = new XmlBeanDefinitionReader(registry, annotationBeanDefinitionReader, delegate);
 
-            definitionReader.loadBeanDefinitions(this.contextConfigLocation);
-
-            this.beanDefinitionRegistry = registry;
-
-            Iterator<String> iterator = registry.keyIterator();
-            while (iterator.hasNext()) {
-                String beanName = iterator.next();
-                try {
-                    BeanDefinition bd = registry.getObject(beanName);
-                    this.initMethod(bd);
-                    if (bd.isSingleton()) {
-                        Object o = this.instance(bd);
-                        this.singletonRegistry.pubObject(beanName, o);
-                        if (bd.alias() != null) {
-                            this.singletonRegistry.pubObject(bd.alias(), o);
-                        }
-                        if (bd.isController()) {
-                            this.assembleController(beanName, o);
-                        }
-                        if (bd.isInterceptor()) {
-                            this.interceptorRegistry.pubObject(beanName, (HandlerInterceptor) o);
-                        }
-                        if (o instanceof ContainerAware) {
-                            ContainerAware containerAware = (ContainerAware) o;
-                            containerAware.aware(this, beanName);
-                        }
-                    } else {
-                        Class clazz = Class.forName(bd.getBeanClassName());
-                        this.initProxyBean(clazz);
-                    }
-                } catch (Throwable t) {
-                    logger.error("init bean error,bean-name {}", beanName);
-                }
+            if (this.builder.isInitSingletonBean()) {
+                definitionReader.loadBeanDefinitions(this.builder.getContextConfigLocation());
             }
+            if (!StringUtility.isNullOrEmpty(builder.getScanBasePackage())) {
+                annotationBeanDefinitionReader.loadBeanDefinitions(builder.getScanBasePackage());
+            }
+            this.beanDefinitionRegistry = registry;
+            this.initProxyBeans();
+            this.initEarlySingleton();
+            this.initSingletonBeans(registry);
 
             logger.info("-------------init initializer ...--------------------------");
             Initializer initializer = this.getBean(
@@ -107,21 +124,49 @@ public class SparrowContainer extends AbstractContainer {
         } catch (Exception e) {
             logger.error("ioc init error", e);
         } finally {
-            this.initProxyBean(Result.class);
-            this.initProxyBean(LoginToken.class);
-            this.initProxyBean(LoginDialog.class);
-            this.initProxyBean(PagerQuery.class);
-            this.initProxyBean(AuthorDTO.class);
-            this.initProxyBean(ImageDTO.class);
-            this.initProxyBean(SimpleItemDTO.class);
+            //annotation proxy
+        }
+    }
+
+    private void initSingletonBeans(SimpleBeanDefinitionRegistry registry) {
+        if (!builder.isInitSingletonBean()) {
+            return;
+        }
+        Iterator<String> iterator = registry.keyIterator();
+        while (iterator.hasNext()) {
+            String beanName = iterator.next();
+            try {
+                BeanDefinition bd = registry.getObject(beanName);
+                if (bd.isSingleton()) {
+                    Object o = this.instance(bd, beanName);
+                    this.singletonRegistry.pubObject(beanName, o);
+                    this.earlySingletonRegistry.removeObject(beanName);
+                    if (bd.alias() != null) {
+                        this.singletonRegistry.pubObject(bd.alias(), o);
+                        this.earlySingletonRegistry.removeObject(bd.alias());
+                    }
+                    if (bd.isController()) {
+                        this.assembleController(beanName, o);
+                    }
+                    if (bd.isInterceptor()) {
+                        this.interceptorRegistry.pubObject(beanName, (HandlerInterceptor) o);
+                    }
+                    if (o instanceof ContainerAware) {
+                        ContainerAware containerAware = (ContainerAware) o;
+                        containerAware.aware(this, beanName);
+                    }
+                }
+            } catch (Throwable t) {
+                logger.error("init bean error,bean-name {}", beanName);
+            }
         }
     }
 
     private void initSystemConfig() throws CacheNotFoundException {
-        if (StringUtility.isNullOrEmpty(this.configLocation)) {
+        if (StringUtility.isNullOrEmpty(this.builder.getConfigLocation())) {
             return;
         }
-        ConfigUtility.initSystem(this.configLocation);
+        ConfigUtility.initSystem(this.builder.getConfigLocation());
         String internationalization = ConfigUtility
             .getValue(Config.INTERNATIONALIZATION);
 

@@ -27,11 +27,15 @@
     <modelVersion>4.0.0</modelVersion>
     <artifactId>sparrow-rocketmq-client</artifactId>
     <name>${project.artifactId}</name>
-    <version>${sparrow_rocketmq_client_version}</version>
+    <version>1.0.0-SNAPSHOT</version>
     <dependencies>
         <dependency>
             <groupId>com.sparrow</groupId>
             <artifactId>sparrow</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.sparrow</groupId>
+            <artifactId>sparrow-protocol-mq</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.rocketmq</groupId>
@@ -41,7 +45,6 @@
     </dependencies>
 
     <build>
-        <finalName>${project.artifactId}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -50,6 +53,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
+                <configuration>
+                    <configLocation>../style/sparrow_checkstyle.xml</configLocation>
+                    <suppressionsLocation>../style/check_style_suppressions.xml</suppressionsLocation>
+                </configuration>
             </plugin>
         </plugins>
     </build>

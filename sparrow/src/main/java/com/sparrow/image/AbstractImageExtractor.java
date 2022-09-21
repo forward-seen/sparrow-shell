@@ -23,10 +23,10 @@ import com.sparrow.constant.SparrowError;
 import com.sparrow.container.Container;
 import com.sparrow.container.ContainerAware;
 import com.sparrow.protocol.BusinessException;
-import com.sparrow.protocol.Downloader;
+import com.sparrow.support.Downloader;
 import com.sparrow.protocol.constant.Extension;
 import com.sparrow.protocol.dto.ImageDTO;
-import com.sparrow.support.file.FileNameProperty;
+import com.sparrow.io.file.FileNameProperty;
 import com.sparrow.utility.CollectionsUtility;
 import com.sparrow.utility.ConfigUtility;
 import com.sparrow.utility.FileUtility;
@@ -37,13 +37,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.inject.Inject;
 
 public abstract class AbstractImageExtractor implements ImageExtractor, ContainerAware {
+    @Inject
     private ImageExtractorRegistry imageExtractorRegistry;
-
-    public void setImageExtractorRegistry(ImageExtractorRegistry imageExtractorRegistry) {
-        this.imageExtractorRegistry = imageExtractorRegistry;
-    }
 
     public boolean hasOuterImage(List<ImageDTO> images) {
         if (CollectionsUtility.isNullOrEmpty(images)) {

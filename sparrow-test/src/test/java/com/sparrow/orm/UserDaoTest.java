@@ -2,10 +2,13 @@ package com.sparrow.orm;
 
 import com.sparrow.constant.DateTime;
 import com.sparrow.container.Container;
+import com.sparrow.container.ContainerBuilder;
 import com.sparrow.core.spi.ApplicationContext;
 import com.sparrow.enums.Gender;
 import com.sparrow.orm.dao.UserDAO;
+import com.sparrow.orm.dao.impl.UserDaoImpl;
 import com.sparrow.orm.po.User;
+import com.sparrow.protocol.dao.UniqueKeyCriteria;
 import com.sparrow.protocol.enums.StatusRecord;
 import com.sparrow.utility.DateTimeUtility;
 import org.junit.Test;
@@ -18,10 +21,19 @@ import java.util.List;
  */
 public class UserDaoTest {
     @Test
+    public void getUser() {
+        Container container = ApplicationContext.getContainer();
+        //container.setContextConfigLocation("/dao.xml");
+        container.init(new ContainerBuilder());
+        UserDaoImpl userDAO = container.getBean("userDao");
+        userDAO.getByUserName("harry");
+    }
+
+    @Test
     public void userTest() {
         Container container = ApplicationContext.getContainer();
-        container.setContextConfigLocation("/dao.xml");
-        container.init();
+        //container.setContextConfigLocation("/dao.xml");
+        container.init(new ContainerBuilder());
         UserDAO userDAO = container.getBean("userDao");
 
         User user = new User();
@@ -33,7 +45,7 @@ public class UserDaoTest {
         user.setNickName("nickName");
         user.setUpdateTime(System.currentTimeMillis());
         user.setCreateTime(System.currentTimeMillis());
-        user.setSex((byte) Gender.FEMALE.ordinal());
+        user.setGender(Gender.FEMALE.ordinal());
         user.setStatus((byte) StatusRecord.ENABLE.ordinal());
         Long id = userDAO.insert(user);
 

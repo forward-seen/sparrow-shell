@@ -21,17 +21,27 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+import javax.inject.Inject;
+import javax.inject.Named;
 
 /**
  * 保持线程请求中的数据 与web应用程序解耦
  */
+@Named
 public class ConnectionContextHolderImpl implements ConnectionContextHolder {
+    public ConnectionContextHolderImpl() {
+        int i = 0;
+    }
 
+    @Inject
     private DataSourceFactory dataSourceFactory;
 
     /**
-     * 这里的功能主要针对thread local 中的映射，将datasource的具体实现分离 datasource 的connection close功能各链接池已实现 请求过程中的事务链接
-     * 同一个线程，同一个事务中只允许一个链接
+     * 这里的功能主要针对thread local 中的映射，
+     * <p>
+     * 将datasource的具体实现分离 datasource 的connection close功能各链接池已实现
+     * <p>
+     * 请求过程中的事务链接 同一个线程，同一个事务中只允许一个链接
      */
     private ThreadLocal<Map<String, Connection>> transactionContainer = new ThreadLocal<Map<String, Connection>>();
 

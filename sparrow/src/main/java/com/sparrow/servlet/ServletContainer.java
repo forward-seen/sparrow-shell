@@ -17,8 +17,7 @@
 
 package com.sparrow.servlet;
 
-import com.sparrow.exception.CacheNotFoundException;
-
+import com.sparrow.cache.exception.CacheNotFoundException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -46,12 +45,6 @@ public interface ServletContainer {
     <T> T flash(String key);
 
     <T> T removeFlash(String key);
-
-    void clear();
-
-    <T> T get(String key);
-
-//    <T> void put(String key,T value);
 
     String referer();
 

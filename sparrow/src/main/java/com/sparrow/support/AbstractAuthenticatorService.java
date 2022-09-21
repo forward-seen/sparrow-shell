@@ -22,8 +22,8 @@ import com.sparrow.constant.ConfigKeyLanguage;
 import com.sparrow.constant.User;
 import com.sparrow.cryptogram.Base64;
 import com.sparrow.cryptogram.Hmac;
-import com.sparrow.protocol.Authenticator;
 import com.sparrow.protocol.LoginToken;
+import com.sparrow.protocol.constant.Constant;
 import com.sparrow.utility.ConfigUtility;
 import com.sparrow.utility.StringUtility;
 import org.slf4j.Logger;
@@ -48,15 +48,16 @@ public abstract class AbstractAuthenticatorService implements Authenticator {
             ConfigUtility.getValue(Config.LANGUAGE)));
         login.setAvatar(ConfigUtility.getValue(Config.DEFAULT_AVATAR));
         if (StringUtility.isNullOrEmpty(permission)) {
+            logger.info("permission is null");
             return login;
         }
 
         try {
             if (!permission.contains(".")) {
+                logger.debug("permission {} don't contains [.]", permission);
                 return login;
             }
             String[] tokens = permission.split("\\.");
-            //id=%1$s&name=%2$s&login=%3$s&expireAt=%4$s&cent=%5$s&avatar=%6$s&deviceId=%7$s&activate=%8$s
             String userInfo = tokens[0];
             String signature = tokens[1];
 
@@ -64,7 +65,8 @@ public abstract class AbstractAuthenticatorService implements Authenticator {
             String[] userInfoArray = userInfo.split("&");
             String dev = userInfoArray[6].substring("deviceId=".length());
             //设备不一致
-            if (!dev.equals(deviceId)) {
+            if (!dev.equals(deviceId) && !Constant.LOCALHOST_IP.equals(deviceId)) {
+                logger.debug("device can't match sign's device [{}] request device [{}] ", dev, deviceId);
                 return login;
             }
 
@@ -74,6 +76,7 @@ public abstract class AbstractAuthenticatorService implements Authenticator {
             if (!StringUtility.isNullOrEmpty(expireAtStr) && !"null".equalsIgnoreCase(expireAtStr)) {
                 expireAt = Long.parseLong(expireAtStr);
                 if (System.currentTimeMillis() > expireAt) {
+                    logger.warn("sign is expire at {}", expireAt);
                     return login;
                 }
             }
@@ -84,12 +87,15 @@ public abstract class AbstractAuthenticatorService implements Authenticator {
 
             //签名不一致
             if (!signature.equals(newSignature)) {
+                logger.warn("sign is not match {} vs new:{}", signature, newSignature);
                 return login;
             }
+            //id=%1$s&name=%2$s&login=%3$s&expireAt=%4$s&cent=%5$s&avatar=%6$s&deviceId=%7$s&activate=%8$s
+
             login.setUserId(userId);
-            login.setNickName(userInfoArray[1].substring("name="
+            login.setUserName(userInfoArray[1].substring("name="
                 .length()));
-            login.setUserName(userInfoArray[2].substring("login=".length()));
+            login.setNickName(userInfoArray[2].substring("login=".length()));
 
             login.setCent(Long.valueOf(userInfoArray[4].substring("cent=".length())));
             login.setAvatar(userInfoArray[5].substring("avatar="

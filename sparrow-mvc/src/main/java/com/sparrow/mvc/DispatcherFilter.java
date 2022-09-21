@@ -29,14 +29,14 @@ import com.sparrow.mvc.adapter.HandlerAdapter;
 import com.sparrow.mvc.adapter.impl.MethodControllerHandlerAdapter;
 import com.sparrow.mvc.mapping.HandlerMapping;
 import com.sparrow.mvc.mapping.impl.UrlMethodHandlerMapping;
-import com.sparrow.protocol.Authenticator;
-import com.sparrow.protocol.Authorizer;
+import com.sparrow.support.Authenticator;
+import com.sparrow.support.Authorizer;
 import com.sparrow.protocol.BusinessException;
 import com.sparrow.protocol.LoginToken;
 import com.sparrow.protocol.Result;
 import com.sparrow.protocol.constant.Constant;
 import com.sparrow.protocol.constant.Extension;
-import com.sparrow.protocol.constant.magic.DIGIT;
+import com.sparrow.protocol.constant.magic.Digit;
 import com.sparrow.protocol.constant.magic.Symbol;
 import com.sparrow.servlet.HandlerInterceptor;
 import com.sparrow.support.LoginDialog;
@@ -88,8 +88,6 @@ public class DispatcherFilter implements Filter {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response,
         FilterChain chain) {
-        logger.debug("begin do filter");
-
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
         String actionKey = sparrowServletUtility.getServletUtility().getActionKey(request);
@@ -109,12 +107,13 @@ public class DispatcherFilter implements Filter {
         ServletInvokableHandlerMethod invokableHandlerMethod = null;
         try {
             invokableHandlerMethod = this.getHandler(httpRequest);
+            //验证用户需要httpContext 输出脚本
+            this.initAttribute(httpRequest, httpResponse);
             if (!this.validateUser(httpRequest, httpResponse)) {
                 return;
             }
-            this.initAttribute(httpRequest, httpResponse);
             if (invokableHandlerMethod == null || invokableHandlerMethod.getMethod() == null) {
-                logger.warn("invokableHandlerMethod is null or method not exist ");
+                logger.warn("invokableHandlerMethod is null or method not exist action-key {}", actionKey);
                 String extension = ConfigUtility.getValue(Config.DEFAULT_PAGE_EXTENSION, Extension.JSP);
                 if (actionKey.endsWith(extension) || actionKey.endsWith(Extension.JSON)) {
                     chain.doFilter(request, response);
@@ -251,7 +250,6 @@ public class DispatcherFilter implements Filter {
         request.setAttribute(Constant.REQUEST_ACTION_CURRENT_FORUM, forumCode);
         request.setAttribute("divNavigation.current", forumCode);
 
-
         String rootPath = ConfigUtility.getValue(Config.ROOT_PATH);
         if (!StringUtility.isNullOrEmpty(rootPath)) {
             request.setAttribute(Config.ROOT_PATH, rootPath);
@@ -271,11 +269,12 @@ public class DispatcherFilter implements Filter {
             }
             HttpContext.getContext().put(Constant.REQUEST_LANGUAGE, language);
         }
-        //设置资源根路径
+        //设置资源根域名
         request.setAttribute(Config.RESOURCE,
             ConfigUtility.getValue(Config.RESOURCE));
 
-        request.setAttribute(Config.UPLOAD_PATH, ConfigUtility.getValue(Config.UPLOAD_PATH));
+        //设置上传文件域名
+        request.setAttribute(Config.UPLOAD, ConfigUtility.getValue(Config.UPLOAD));
 
         //设置图片域
         request.setAttribute(Config.IMAGE_WEBSITE, ConfigUtility.getValue(Config.IMAGE_WEBSITE));
@@ -289,7 +288,7 @@ public class DispatcherFilter implements Filter {
                 ConfigKeyLanguage.WEBSITE_NAME);
             if (!configWebsiteName.equals(currentWebsiteName)) {
                 cookieUtility.set(response, ConfigKeyLanguage.WEBSITE_NAME,
-                    configWebsiteName, DIGIT.ALL);
+                    configWebsiteName, Digit.ALL);
             }
         }
         if (request.getQueryString() != null) {
@@ -380,7 +379,6 @@ public class DispatcherFilter implements Filter {
         httpRequest.setAttribute(User.LOGIN_TOKEN, user);
 
         if (user.getUserId().equals(User.VISITOR_ID)) {
-            String rootPath = ConfigUtility.getValue(Config.ROOT_PATH);
             if (LoginType.MESSAGE.equals(handlerExecutionChain.getLoginType())) {
                 Result result = Result.fail(SparrowError.USER_NOT_LOGIN);
                 httpResponse.setHeader("Content-Type", Constant.CONTENT_TYPE_JSON);
@@ -397,14 +395,13 @@ public class DispatcherFilter implements Filter {
             boolean isInFrame = LoginType.LOGIN_IFRAME
                 .equals(handlerExecutionChain.getLoginType());
             if (!StringUtility.isNullOrEmpty(loginUrl)) {
-                String defaultSystemPage = rootPath + ConfigUtility.getValue(Config.DEFAULT_SYSTEM_INDEX);
-                String defaultMenuPage = rootPath + ConfigUtility.getValue(Config.DEFAULT_MENU_PAGE);
+                String defaultSystemPage = ConfigUtility.getValue(Config.DEFAULT_ADMIN_INDEX);
+                if (!defaultSystemPage.endsWith("/")) {
+                    defaultSystemPage += "/";
+                }
                 String redirectUrl = httpRequest.getRequestURL().toString();
                 if (redirectUrl.endsWith(Extension.DO) || redirectUrl.endsWith(Extension.JSON)) {
                     redirectUrl = sparrowServletUtility.getServletUtility().referer(httpRequest);
-                }
-                if (redirectUrl != null && redirectUrl.equals(defaultMenuPage)) {
-                    redirectUrl = Symbol.EMPTY;
                 }
 
                 if (!StringUtility.isNullOrEmpty(redirectUrl)) {
@@ -412,14 +409,14 @@ public class DispatcherFilter implements Filter {
                         redirectUrl += Symbol.QUESTION_MARK + httpRequest.getQueryString();
                     }
                     if (isInFrame) {
-                        redirectUrl = defaultSystemPage + Symbol.QUESTION_MARK + redirectUrl;
+                        if (!defaultSystemPage.equals(redirectUrl)) {
+                            redirectUrl = defaultSystemPage + Symbol.QUESTION_MARK + redirectUrl;
+                        } else {
+                            redirectUrl = defaultSystemPage;
+                        }
                     }
                     loginUrl = loginUrl + Symbol.QUESTION_MARK + redirectUrl;
                 }
-            }
-            String passport = ConfigUtility.getValue(Config.PASSPORT_ROOT);
-            if (passport != null) {
-                loginUrl = passport + loginUrl;
             }
             if (!handlerExecutionChain.isJson()) {
                 if (isInFrame) {
@@ -438,11 +435,7 @@ public class DispatcherFilter implements Filter {
             return false;
         }
 
-        if (!handlerExecutionChain.isNeedAuthorizing()) {
-            return true;
-        }
         Authorizer authorizer = this.container.getBean(SysObjectName.AUTHORIZER_SERVICE);
-
         if (!authorizer.isPermitted(
             user, actionName)) {
             httpResponse.getWriter().write(Constant.ACCESS_DENIED);

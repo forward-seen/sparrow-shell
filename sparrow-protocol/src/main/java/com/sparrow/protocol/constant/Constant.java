@@ -55,6 +55,8 @@ public class Constant {
 
     public static final String CONTENT_TYPE_JSON = "application/json";
 
+    public static final String CONTENT_TYPE_JAVASCRIPT = "application/javascript";
+
     public static final String CONTENT_TYPE_JSON_ALT = "text/x-json";
 
     public static final String CONTENT_TYPE_XML = "application/xml";
@@ -88,7 +90,6 @@ public class Constant {
     public static final String REQUEST_ACTION_CURRENT_FORUM = "request_action_current_forum";
     public static final String REQUEST_CLIENT_INFORMATION = "client";
 
-    public static final String STRING_ALL = "all";
     /**
      * 空链接
      */

@@ -17,82 +17,88 @@
 package com.sparrow.mvc.interceptor;
 
 import com.sparrow.constant.Config;
-import com.sparrow.protocol.constant.ClientInformation;
+import com.sparrow.protocol.constant.ClientInfoConstant;
 import com.sparrow.protocol.constant.Constant;
-import com.sparrow.protocol.enums.PLATFORM;
+import com.sparrow.protocol.enums.Platform;
 import com.sparrow.servlet.HandlerInterceptor;
 import com.sparrow.support.web.ServletUtility;
 import com.sparrow.utility.ConfigUtility;
 import com.sparrow.utility.StringUtility;
 import eu.bitwalker.useragentutils.Browser;
+import eu.bitwalker.useragentutils.BrowserType;
 import eu.bitwalker.useragentutils.DeviceType;
 import eu.bitwalker.useragentutils.OperatingSystem;
 import eu.bitwalker.useragentutils.UserAgent;
-
+import javax.inject.Named;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+@Named
 public class SimpleMobileClientInformationInterceptor implements HandlerInterceptor {
+    private static Logger logger = LoggerFactory.getLogger(SimpleMobileClientInformationInterceptor.class);
     private ServletUtility servletUtility = ServletUtility.getInstance();
 
     @Override public boolean preHandle(HttpServletRequest request, HttpServletResponse response) throws Exception {
         String rootPath = ConfigUtility.getValue(Config.ROOT_PATH);
         com.sparrow.protocol.ClientInformation clientInformation = new com.sparrow.protocol.ClientInformation();
         clientInformation.setIp(servletUtility.getClientIp(request));
-        String appId = request.getHeader(ClientInformation.APP_ID);
+        String appId = request.getHeader(ClientInfoConstant.APP_ID);
         if (!StringUtility.isNullOrEmpty(appId)) {
             clientInformation.setAppId(Integer.valueOf(appId));
         }
 
-        String appVersion = request.getHeader(ClientInformation.APP_VERSION);
+        String appVersion = request.getHeader(ClientInfoConstant.APP_VERSION);
         if (!StringUtility.isNullOrEmpty(appVersion)) {
             clientInformation.setAppVersion(Float.valueOf(appVersion));
         }
 
-        clientInformation.setBssid(request.getHeader(ClientInformation.BSSID));
-        clientInformation.setChannel(request.getHeader(ClientInformation.CHANNEL));
-        clientInformation.setClientVersion(request.getHeader(ClientInformation.CLIENT_VERSION));
+        clientInformation.setBssid(request.getHeader(ClientInfoConstant.BSSID));
+        clientInformation.setChannel(request.getHeader(ClientInfoConstant.CHANNEL));
+        clientInformation.setClientVersion(request.getHeader(ClientInfoConstant.CLIENT_VERSION));
 
-        clientInformation.setDevice(request.getHeader(ClientInformation.DEVICE));
-        clientInformation.setDeviceId(request.getHeader(ClientInformation.DEVICE_ID));
-        clientInformation.setDeviceModel(request.getHeader(ClientInformation.DEVICE_MODEL));
+        clientInformation.setDevice(request.getHeader(ClientInfoConstant.DEVICE));
+        clientInformation.setDeviceId(request.getHeader(ClientInfoConstant.DEVICE_ID));
+        clientInformation.setDeviceModel(request.getHeader(ClientInfoConstant.DEVICE_MODEL));
 
-        clientInformation.setIdfa(request.getHeader(ClientInformation.IDFA));
-        clientInformation.setImei(request.getHeader(ClientInformation.IMEI));
-        String latitude = request.getHeader(ClientInformation.LATITUDE);
+        clientInformation.setIdfa(request.getHeader(ClientInfoConstant.IDFA));
+        clientInformation.setImei(request.getHeader(ClientInfoConstant.IMEI));
+        String latitude = request.getHeader(ClientInfoConstant.LATITUDE);
         if (!StringUtility.isNullOrEmpty(latitude)) {
-            clientInformation.setLatitude(Double.valueOf(request.getHeader(ClientInformation.LATITUDE)));
+            clientInformation.setLatitude(Double.valueOf(request.getHeader(ClientInfoConstant.LATITUDE)));
         }
 
-        String longitude = request.getHeader(ClientInformation.LONGITUDE);
+        String longitude = request.getHeader(ClientInfoConstant.LONGITUDE);
         if (!StringUtility.isNullOrEmpty(longitude)) {
-            clientInformation.setLongitude(Double.valueOf(request.getHeader(ClientInformation.LONGITUDE)));
+            clientInformation.setLongitude(Double.valueOf(request.getHeader(ClientInfoConstant.LONGITUDE)));
         }
 
-        clientInformation.setOs(request.getHeader(ClientInformation.OS));
-        clientInformation.setNetwork(request.getHeader(ClientInformation.NETWORK));
-        String startTime = request.getHeader(ClientInformation.START_TIME);
+        clientInformation.setOs(request.getHeader(ClientInfoConstant.OS));
+        clientInformation.setNetwork(request.getHeader(ClientInfoConstant.NETWORK));
+        String startTime = request.getHeader(ClientInfoConstant.START_TIME);
         if (!StringUtility.isNullOrEmpty(startTime)) {
             clientInformation.setStartTime(Long.valueOf(startTime));
         }
-        String resumeTime = request.getHeader(ClientInformation.RESUME_TIME);
+        String resumeTime = request.getHeader(ClientInfoConstant.RESUME_TIME);
 
         if (!StringUtility.isNullOrEmpty(resumeTime)) {
             clientInformation.setResumeTime(Long.valueOf(resumeTime));
         }
         clientInformation.setWebsite(rootPath);
-        clientInformation.setUserAgent(request.getHeader(ClientInformation.USER_AGENT));
+        clientInformation.setUserAgent(request.getHeader(ClientInfoConstant.USER_AGENT));
         UserAgent userAgent = UserAgent.parseUserAgentString(clientInformation.getUserAgent());
         OperatingSystem os = userAgent.getOperatingSystem();
         Browser browser = userAgent.getBrowser();
-        if (os.getDeviceType().equals(DeviceType.COMPUTER)) {
+        logger.info("device type {},browser type {}", os.getDeviceType(), browser.getBrowserType());
+        if (os.getDeviceType().equals(DeviceType.COMPUTER) || BrowserType.MOBILE_BROWSER.equals(browser.getBrowserType())) {
             clientInformation.setOs(os.getGroup().getName());
-            clientInformation.setPlatform(PLATFORM.PC);
+            clientInformation.setPlatform(Platform.PC);
             clientInformation.setDevice(browser.getName());
             clientInformation.setDeviceId(clientInformation.getIp());
         }
 
-        String simulate = request.getHeader(ClientInformation.SIMULATE);
+        String simulate = request.getHeader(ClientInfoConstant.SIMULATE);
         if (!StringUtility.isNullOrEmpty(simulate)) {
             clientInformation.setSimulate(Boolean.valueOf(simulate));
         }

@@ -19,9 +19,7 @@ package com.sparrow.utility;
 
 import com.sparrow.enums.Order;
 import com.sparrow.support.MapValueComparator;
-
 import java.util.Map;
-import java.util.Random;
 import java.util.TreeMap;
 
 public class RandomUtility {
@@ -35,7 +33,7 @@ public class RandomUtility {
         Map<T, Double> valueSortedRules = new TreeMap<T, Double>(new MapValueComparator(rules, Order.ASC));
         valueSortedRules.putAll(rules);
         int randomNumber = new java.util.Random().nextInt(poolSize);
-        Double limit = 0.0;
+        double limit = 0.0;
         for (T label : valueSortedRules.keySet()) {
             //valueSortedRules.get(label) null exception
             limit += Math.ceil(poolSize * rules.get(label));
@@ -44,16 +42,5 @@ public class RandomUtility {
             }
         }
         return defaultValue;
-    }
-
-    public static String getRandomStringByLength(int length) {
-        String base = "abcdefghijklmnopqrstuvwxyz0123456789";
-        Random random = new Random();
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < length; i++) {
-            int number = random.nextInt(base.length());
-            sb.append(base.charAt(number));
-        }
-        return sb.toString();
     }
 }

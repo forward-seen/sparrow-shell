@@ -17,22 +17,24 @@
 
 package com.sparrow.support.web;
 
+import com.sparrow.cache.Key;
 import com.sparrow.constant.Config;
-import com.sparrow.constant.cache.KEY;
 import com.sparrow.constant.cache.key.KeyUser;
 import com.sparrow.utility.ConfigUtility;
 import com.sparrow.utility.JSUtility;
 import com.sparrow.utility.StringUtility;
+import javax.inject.Named;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Named
 public class CookieUtility {
     private static Logger logger = LoggerFactory.getLogger(CookieUtility.class);
 
-    private KEY.Business permissionBusiness = KeyUser.PERMISSION;
+    private Key.Business permissionBusiness = KeyUser.PERMISSION;
 
     public void set(HttpServletResponse response, String key,
         String value, int days) {

@@ -19,7 +19,7 @@ package com.sparrow.orm.template.impl;
 
 import com.sparrow.constant.ConfigKeyDB;
 import com.sparrow.orm.query.Criteria;
-import com.sparrow.protocol.constant.magic.DIGIT;
+import com.sparrow.protocol.constant.magic.Digit;
 import com.sparrow.core.Pair;
 import com.sparrow.orm.*;
 import com.sparrow.orm.query.SearchCriteria;
@@ -142,7 +142,7 @@ public class DBORMTemplate<T, I> implements SparrowDaoSupport<T, I> {
         }
 
         if (!StringUtility.isNullOrEmpty(searchCriteria.getPageSize())
-            && searchCriteria.getPageSize() != DIGIT.ALL) {
+            && searchCriteria.getPageSize() != Digit.ALL) {
             selectSql.append(searchCriteria.getLimitClause());
         }
         logger.info(selectSql.toString());
@@ -168,7 +168,7 @@ public class DBORMTemplate<T, I> implements SparrowDaoSupport<T, I> {
         select.append(this.ormMetadataAccessor.getEntityManager().getFields());
         select.append(" from "
             + this.ormMetadataAccessor.getEntityManager().getDialectTableName());
-        Field uniqueField = this.ormMetadataAccessor.getEntityManager().getUniqueField(uniqueKeyCriteria.getUniqueFieldName());
+        Field uniqueField = this.ormMetadataAccessor.getEntityManager().getUniqueField(uniqueKeyCriteria.getUniquePropertyName());
         select.append(" where " + uniqueField.getColumnName() + "=?");
         JDBCParameter jdbcParameter = new JDBCParameter(select.toString(), Collections.singletonList(new Parameter(uniqueField, uniqueField.convert(uniqueKeyCriteria.getKey().toString()))));
         ResultSet rs = this.jdbcSupport.executeQuery(jdbcParameter);
@@ -370,7 +370,7 @@ public class DBORMTemplate<T, I> implements SparrowDaoSupport<T, I> {
 
     @Override
     public Long getCountByUnique(UniqueKeyCriteria uniqueKeyCriteria) {
-        JDBCParameter jdbcParameter = this.ormMetadataAccessor.getCount(uniqueKeyCriteria.getKey(), uniqueKeyCriteria.getUniqueFieldName());
+        JDBCParameter jdbcParameter = this.ormMetadataAccessor.getCount(uniqueKeyCriteria.getKey(), uniqueKeyCriteria.getUniquePropertyName());
         Object count = this.jdbcSupport.executeScalar(jdbcParameter);
         if (count == null) {
             return 0L;
@@ -413,7 +413,7 @@ public class DBORMTemplate<T, I> implements SparrowDaoSupport<T, I> {
 
     @Override
     public <X> X getFieldValueByUnique(UniqueKeyCriteria uniqueKeyCriteria) {
-        JDBCParameter jdbcParameter = this.ormMetadataAccessor.getFieldValue(uniqueKeyCriteria.getResultFiled(), uniqueKeyCriteria.getKey(), uniqueKeyCriteria.getUniqueFieldName());
+        JDBCParameter jdbcParameter = this.ormMetadataAccessor.getFieldValue(uniqueKeyCriteria.getResultFiled(), uniqueKeyCriteria.getKey(), uniqueKeyCriteria.getUniquePropertyName());
         Object fieldValue = this.jdbcSupport.executeScalar(jdbcParameter);
         if (fieldValue == null) {
             return null;

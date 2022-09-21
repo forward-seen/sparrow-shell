@@ -17,11 +17,11 @@
 package com.sparrow.redis;
 
 import com.sparrow.cache.CacheClient;
+import com.sparrow.cache.Key;
+import com.sparrow.cache.exception.CacheConnectionException;
 import com.sparrow.constant.SparrowModule;
-import com.sparrow.constant.cache.KEY;
 import com.sparrow.container.Container;
 import com.sparrow.container.impl.SparrowContainer;
-import com.sparrow.exception.CacheConnectionException;
 import org.junit.Test;
 
 /**
@@ -31,15 +31,15 @@ public class RedisKeyTest {
 
     @Test
     public void readLoc() throws CacheConnectionException {
-        KEY.Business business=new KEY.Business(SparrowModule.CODE,"KEY");
+        Key.Business business=new Key.Business(SparrowModule.CODE,"KEY");
 
-        KEY key=new KEY.Builder().business(business).build();
+        Key key=new Key.Builder().business(business).build();
 
         Container container = new SparrowContainer();
         container.setConfigLocation("/redis_config.xml");
         container.init();
         CacheClient client = container.getBean("cacheClient");
         //client.string().set(key,"test");
-        System.out.println(client.key().expire(key,1));
+        System.out.println(client.key().expireSeconds(key,1L));
     }
 }

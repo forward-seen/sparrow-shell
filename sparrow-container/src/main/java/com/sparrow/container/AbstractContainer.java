@@ -26,6 +26,7 @@ import com.sparrow.exception.DuplicateActionMethodException;
 import com.sparrow.utility.ConfigUtility;
 import com.sparrow.utility.StringUtility;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -38,13 +39,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public abstract class AbstractContainer implements Container {
-
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    protected String contextConfigLocation = "/beans.xml";
-    protected String configLocation = "/system_config.properties";
+    protected ContainerBuilder builder;
 
     protected SimpleSingletonRegistry singletonRegistry = new SimpleSingletonRegistry();
+
+    protected SimpleSingletonRegistry earlySingletonRegistry = new SimpleSingletonRegistry();
 
     private ControllerRegister controllerRegister = new ControllerRegister();
 
@@ -65,16 +66,6 @@ public abstract class AbstractContainer implements Container {
      * class-name-->type converter list
      */
     final Map<String, List<TypeConverter>> fieldCache = new ConcurrentHashMap<String, List<TypeConverter>>();
-
-    /**
-     * class-name -->set method list
-     */
-    final Map<String, List<Method>> setMethods = new ConcurrentHashMap<String, List<Method>>();
-
-    /**
-     * class-name -->get method list
-     */
-    final Map<String, List<Method>> getMethods = new ConcurrentHashMap<String, List<Method>>();
 
     @Override
     public FactoryBean getSingletonRegister() {
@@ -111,28 +102,6 @@ public abstract class AbstractContainer implements Container {
         return controllerMethodCache.get(clazzName);
     }
 
-    public void initMethod(BeanDefinition bd) {
-        Class beanClass;
-        try {
-            beanClass = Class.forName(bd.getBeanClassName());
-        } catch (ClassNotFoundException e) {
-            logger.error("{} class not found", bd.getBeanClassName());
-            return;
-        }
-        Method[] methods = beanClass.getMethods();
-        List<Method> setMethods = new ArrayList<Method>(methods.length / 2);
-        List<Method> getMethods = new ArrayList<Method>(methods.length / 2);
-        for (Method method : methods) {
-            if (PropertyNamer.isSetter(method.getName())) {
-                setMethods.add(method);
-                continue;
-            }
-            getMethods.add(method);
-        }
-        this.setMethods.put(beanClass.getSimpleName(), setMethods);
-        this.getMethods.put(beanClass.getSimpleName(), getMethods);
-    }
-
     @Override
     public <T> T getBean(String beanName) {
         T o = (T) singletonRegistry.getObject(beanName);
@@ -144,7 +113,7 @@ public abstract class AbstractContainer implements Container {
             return null;
         }
         try {
-            o = (T) this.instance(bd);
+            o = (T) this.instance(bd, beanName);
         } catch (Throwable e) {
             logger.error("get bean error name {}", beanName);
             throw new RuntimeException(e);
@@ -180,32 +149,38 @@ public abstract class AbstractContainer implements Container {
 
     private <T> void set(T currentObject, String beanName, Object val) {
         Class<?> currentClass = currentObject.getClass();
-        List<Method> methods = this.setMethods.get(currentClass.getSimpleName());
-        // set方法
-        String setBeanMethod = PropertyNamer.setter(beanName);
-        for (Method method : methods) {
-            if (!method.getName().equals(setBeanMethod)) {
-                continue;
-            }
+        Field field = null;
+        try {
+            field = currentClass.getDeclaredField(beanName);
+        } catch (NoSuchFieldException e) {
             try {
-                Class parameterType = method.getParameterTypes()[0];
-                if (!parameterType.isAssignableFrom(val.getClass())) {
-                    Object v = new TypeConverter("", val, parameterType).convert();
-                    if (v == null) {
-                        continue;
-                    } else {
-                        val = v;
-                    }
-                }
-                method.invoke(currentObject, val);
-            } catch (Throwable e) {
-                logger.error("set ref error {}, bean name:{}", e, beanName);
+                field = currentClass.getSuperclass().getDeclaredField(beanName);
+            } catch (NoSuchFieldException exception) {
+                logger.error("filed not found {}", beanName);
+                return;
             }
-            return;
+        }
+
+        try {
+            Class parameterType = field.getType();
+            if (!parameterType.isAssignableFrom(val.getClass())) {
+                Object v = new TypeConverter("", val, parameterType).convert();
+                if (v == null) {
+                    logger.error("field value is null className {},refName {}, value {}", currentClass.getName(), beanName, val);
+                    return;
+                } else {
+                    val = v;
+                }
+            }
+            // set方法
+            field.setAccessible(true);
+            field.set(currentObject, val);
+        } catch (Throwable e) {
+            logger.error("set ref error {}, bean name:{}", e, beanName);
         }
     }
 
-    protected Object instance(BeanDefinition bd) {
+    public Object earlyInstance(BeanDefinition bd) {
         Object instance = null;
         Class clazz = null;
         try {
@@ -236,7 +211,14 @@ public abstract class AbstractContainer implements Container {
                 return null;
             }
         }
+        return instance;
+    }
 
+    protected Object instance(BeanDefinition bd, String beanName) {
+        Object instance = this.earlySingletonRegistry.getObject(beanName);
+        if (instance == null) {
+            instance = this.earlyInstance(bd);
+        }
         List<ValueHolder> valueHolders = bd.getPropertyValues();
         for (ValueHolder valueHolder : valueHolders) {
             Object value = valueHolder.getValue();
@@ -244,7 +226,10 @@ public abstract class AbstractContainer implements Container {
                 String refName = value.toString();
                 value = singletonRegistry.getObject(refName);
                 if (value == null) {
-                    logger.warn("{} ref is null", refName);
+                    value = earlySingletonRegistry.getObject(refName);
+                }
+                if (value == null) {
+                    logger.error("beanName {} ,refName {} is null", beanName, refName);
                     continue;
                 }
             }
@@ -255,11 +240,12 @@ public abstract class AbstractContainer implements Container {
 
     @Override
     public <T> T getBean(SysObjectName objectName) {
-        String defaultBeanName = StringUtility.toHump(objectName.name().toLowerCase(), "_");
-        String beanName = ConfigUtility.getValue(objectName.name().toLowerCase(), defaultBeanName);
+        String beanName = objectName.name().toLowerCase();
+        String defaultBeanName = StringUtility.toHump(beanName, "_");
+        beanName = ConfigUtility.getValue(beanName, defaultBeanName);
         T obj = this.getBean(beanName);
         if (obj == null) {
-            logger.warn(beanName + " not exist,please config [" + defaultBeanName + "] in " + this.contextConfigLocation);
+            logger.warn(beanName + " not exist,please config [" + defaultBeanName + "] in " + builder.getContextConfigLocation());
         }
         return obj;
     }
@@ -313,21 +299,5 @@ public abstract class AbstractContainer implements Container {
         }
         this.controllerMethodCache.put(beanName, methodMap);
         this.controllerRegister.pubObject(beanName, o);
-    }
-
-    @Override
-    public void setConfigLocation(String configLocation) {
-        if (StringUtility.isNullOrEmpty(configLocation)) {
-            return;
-        }
-        this.configLocation = configLocation;
-    }
-
-    @Override
-    public void setContextConfigLocation(String contextConfigLocation) {
-        if (StringUtility.isNullOrEmpty(contextConfigLocation)) {
-            return;
-        }
-        this.contextConfigLocation = contextConfigLocation;
     }
 }

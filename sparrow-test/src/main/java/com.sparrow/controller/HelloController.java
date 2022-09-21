@@ -16,12 +16,12 @@
  */
 package com.sparrow.controller;
 
+import com.sparrow.cache.exception.CacheNotFoundException;
 import com.sparrow.constant.SparrowError;
 import com.sparrow.constant.User;
-import com.sparrow.exception.CacheNotFoundException;
 import com.sparrow.mvc.RequestParameters;
 import com.sparrow.mvc.ViewWithModel;
-import com.sparrow.protocol.Authenticator;
+import com.sparrow.support.Authenticator;
 import com.sparrow.protocol.BusinessException;
 import com.sparrow.protocol.LoginToken;
 import com.sparrow.protocol.pager.PagerResult;
@@ -49,6 +49,16 @@ public class HelloController {
 
     public ViewWithModel hello() throws BusinessException {
         return ViewWithModel.forward("hello", new HelloVO("我来自遥远的sparrow 星球,累死我了..."));
+    }
+
+    @RequestParameters("key")
+    public HelloVO env(String key) throws BusinessException {
+        return new HelloVO(System.getenv(key));
+    }
+
+    @RequestParameters("key")
+    public HelloVO env2(String key) throws BusinessException {
+        return new HelloVO(key);
     }
 
     public ViewWithModel exception() throws BusinessException {

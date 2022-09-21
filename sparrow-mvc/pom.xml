@@ -24,12 +24,13 @@
         <version>1.0</version>
     </parent>
     <artifactId>sparrow-mvc</artifactId>
-    <version>${sparrow_mvc_version}</version>
+    <version>1.0.0-SNAPSHOT</version>
     <dependencies>
         <dependency>
             <groupId>com.sparrow</groupId>
             <artifactId>sparrow</artifactId>
         </dependency>
+        <!-- 二维码-->
         <dependency>
             <groupId>com.google.zxing</groupId>
             <artifactId>core</artifactId>
@@ -43,6 +44,7 @@
             <groupId>javax.servlet.jsp</groupId>
             <artifactId>jsp-api</artifactId>
         </dependency>
+        <!--user agent-->
         <dependency>
             <groupId>eu.bitwalker</groupId>
             <artifactId>UserAgentUtils</artifactId>
@@ -59,6 +61,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
+                <configuration>
+                    <configLocation>../style/sparrow_checkstyle.xml</configLocation>
+                    <suppressionsLocation>../style/check_style_suppressions.xml</suppressionsLocation>
+                </configuration>
             </plugin>
         </plugins>
     </build>

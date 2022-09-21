@@ -17,16 +17,10 @@
 package com.sparrow.container;
 
 import javax.inject.Inject;
-import javax.inject.Named;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Named
 public abstract class AbstractBeanDefinitionReader implements BeanDefinitionReader {
-
-    /**
-     * Logger available to subclasses.
-     */
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
     @Inject

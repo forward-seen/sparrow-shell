@@ -18,8 +18,8 @@
 package com.sparrow.concurrent;
 
 import com.sparrow.cache.CacheClient;
-import com.sparrow.constant.cache.KEY;
-import com.sparrow.exception.CacheConnectionException;
+import com.sparrow.cache.Key;
+import com.sparrow.cache.exception.CacheConnectionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +27,7 @@ public class DistributionLock {
     private static Logger logger = LoggerFactory.getLogger(DistributionLock.class);
 
     private CacheClient cacheClient;
-    private KEY key;
+    private Key key;
     private static int expireMillis = 60 * 1000;
 
     private static final int MAX_SLEEP_MILLIS = 1024;
@@ -37,7 +37,7 @@ public class DistributionLock {
     public DistributionLock(CacheClient cacheClient, String lockKey) {
 
         this.cacheClient = cacheClient;
-        this.key = KEY.parse(lockKey);
+        this.key = Key.parse(lockKey);
     }
 
     public DistributionLock(CacheClient cacheClient, String lockKey, Integer expireSecs) {
@@ -57,7 +57,7 @@ public class DistributionLock {
         while (true) {
             //+1保证每次请求的expire 不同
             long expires = System.currentTimeMillis() + expireMillis + 1;
-            if (cacheClient.string().setIfNotExist(key, expires + "") > 0) { //同步的
+            if (cacheClient.string().setIfNotExist(key, expires + "")) { //同步的
                 // lock acquired
                 locked = true;
                 return expires;

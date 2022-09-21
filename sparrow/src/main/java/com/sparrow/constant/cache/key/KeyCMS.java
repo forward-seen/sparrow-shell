@@ -17,10 +17,10 @@
 
 package com.sparrow.constant.cache.key;
 
+import com.sparrow.cache.Key;
 import com.sparrow.constant.SparrowModule;
-import com.sparrow.constant.cache.KEY;
 
 public class KeyCMS {
-    public static final KEY.Business CMS_ALL_HYPERLINK = new KEY.Business(SparrowModule.CMS, "ALL", "HYPERLINK");
-    public static final KEY.Business CMS_ALL_CRAWL = new KEY.Business(SparrowModule.CMS, "ALL", "CRAWL");
+    public static final Key.Business CMS_ALL_HYPERLINK = new Key.Business(SparrowModule.CMS, "ALL", "HYPERLINK");
+    public static final Key.Business CMS_ALL_CRAWL = new Key.Business(SparrowModule.CMS, "ALL", "CRAWL");
 }
