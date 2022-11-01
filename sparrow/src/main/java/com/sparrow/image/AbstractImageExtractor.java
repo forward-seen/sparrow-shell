@@ -19,11 +19,11 @@ package com.sparrow.image;
 
 import com.sparrow.constant.Config;
 import com.sparrow.constant.Regex;
-import com.sparrow.constant.SparrowError;
+import com.sparrow.protocol.constant.SparrowError;
 import com.sparrow.container.Container;
 import com.sparrow.container.ContainerAware;
 import com.sparrow.protocol.BusinessException;
-import com.sparrow.support.Downloader;
+import com.sparrow.protocol.Downloader;
 import com.sparrow.protocol.constant.Extension;
 import com.sparrow.protocol.dto.ImageDTO;
 import com.sparrow.io.file.FileNameProperty;
